@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>feoln — Mini App разработчик</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --bg-deep:#0d0b0a;
+    --bg-panel:#14100e;
+    --card:#1c1714;
+    --card-2:#241e1a;
+    --card-border:#362d27;
+    --coffee:#a67c52;
+    --coffee-dark:#8c6239;
+    --coffee-badge:#4a382c;
+    --bad:#d9534f;
+    --good:#7fae7a;
+    --hair:rgba(255,255,255,0.05);
+  }
+  *{-webkit-tap-highlight-color: transparent;}
+  html,body{background: var(--bg-deep); overscroll-behavior-y: none;}
+  body{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; color:#eee7e0;}
+  .font-display{font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; letter-spacing:-0.02em;}
+
+  ::-webkit-scrollbar{display:none;}
+  *{scrollbar-width:none;}
+
+  .spring{ transition: transform .15s ease, box-shadow .2s ease, background-color .2s ease; }
+  .spring:active{ transform: scale(.95); }
+
+  @keyframes fadeInUp{
+    from{opacity:0; transform: translateY(10px);}
+    to{opacity:1; transform: translateY(0);}
+  }
+  .anim-in{animation: fadeInUp .45s cubic-bezier(.2,.8,.2,1) both;}
+  .fade-content{ animation: fadeInUp .38s cubic-bezier(.2,.8,.2,1) both; }
+
+  @keyframes toastDown{
+    0%{opacity:0; transform: translate(-50%, -16px);}
+    10%{opacity:1; transform: translate(-50%, 0);}
+    85%{opacity:1; transform: translate(-50%, 0);}
+    100%{opacity:0; transform: translate(-50%, -10px);}
+  }
+  .toast-anim{animation: toastDown 2s ease forwards;}
+
+  .glow-coffee{ box-shadow: 0 0 0 1px rgba(166,124,82,.3), 0 0 15px rgba(166,124,82,0.25); }
+  .glow-hover:active{ box-shadow: 0 0 0 1px rgba(166,124,82,.5), 0 0 22px rgba(166,124,82,0.4); }
+
+  .tab-underline{
+    position:absolute; bottom:-1px; left:0; height:2px; border-radius:2px;
+    background: linear-gradient(90deg, var(--coffee-dark), var(--coffee));
+    box-shadow: 0 0 10px rgba(166,124,82,.6);
+    transition: transform .32s cubic-bezier(.3,.8,.3,1), width .32s cubic-bezier(.3,.8,.3,1);
+  }
+
+  .price-badge{
+    background: rgba(166,124,82,0.14);
+    border: 1px solid rgba(166,124,82,0.4);
+  }
+
+  .skeleton-ring::before{
+    content:"";
+    position:absolute; inset:-2px; border-radius:9999px;
+    background: conic-gradient(from 0deg, var(--coffee-dark), var(--coffee), var(--coffee-dark));
+    z-index:-1;
+  }
+
+  .card{ background: var(--card); border:1px solid var(--card-border); }
+  .panel{ background: var(--bg-panel); border-bottom:1px solid var(--hair); }
+
+  .icon-tile{
+    width:48px; height:48px; border-radius:16px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+
+  /* etiquette toggle */
+  .etq-toggle-btn{
+    flex:1; padding: 10px 0; border-radius: 14px; font-weight:700; font-size:13px;
+    transition: all .25s ease;
+  }
+  .etq-toggle-btn.active-bad{ background: rgba(217,83,79,0.16); color:#f5b3b1; border:1px solid rgba(217,83,79,0.5); }
+  .etq-toggle-btn.active-good{ background: rgba(127,174,122,0.16); color:#c9e3c5; border:1px solid rgba(127,174,122,0.5); }
+  .etq-toggle-btn.inactive{ background: transparent; color:#8a7f76; border:1px solid var(--card-border); }
+
+  /* fake telegram bubbles */
+  .bubble-row{ display:flex; margin-bottom:6px; }
+  .bubble{
+    max-width: 78%;
+    padding: 8px 12px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height:1.35;
+    position:relative;
+  }
+  .bubble-bad{ background:#2a2018; border:1px solid rgba(217,83,79,0.35); border-bottom-right-radius:4px; }
+  .bubble-good{ background:#20281f; border:1px solid rgba(127,174,122,0.4); border-bottom-right-radius:4px; }
+  .bubble-time{ font-size:10px; opacity:.5; margin-top:3px; text-align:right; }
+</style>
+</head>
+<body class="min-h-screen pb-28">
+
+<!-- HEADER / HERO -->
+<header class="px-5 pt-6 pb-5 panel">
+  <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center gap-2">
+      <div class="w-2 h-2 rounded-full" style="background:var(--coffee); box-shadow:0 0 6px var(--coffee);"></div>
+      <span class="text-xs font-medium text-[#9a8b7d]">на связи · берёт заказы</span>
+    </div>
+    <div class="flex items-center gap-1 text-[#6b6058]">
+      <i data-lucide="sparkles" class="w-4 h-4"></i>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-4">
+    <div class="relative w-16 h-16 rounded-full p-[2px] shrink-0 skeleton-ring" style="position:relative;">
+      <div class="w-full h-full rounded-full bg-[#14100e] flex items-center justify-center overflow-hidden">
+        <span class="font-display text-xl font-bold text-white">FE</span>
+      </div>
+    </div>
+    <div>
+      <h1 class="font-display text-xl font-bold leading-tight text-white">feoln</h1>
+      <p class="text-sm text-[#9a8b7d] leading-snug">Разработка Telegram Mini Apps и ботов</p>
+    </div>
+  </div>
+
+  <div class="flex gap-2 mt-4">
+    <button onclick="openTg('https://t.me/feoln')"
+       class="spring glow-hover flex-[2] flex items-center justify-center gap-2 text-white text-sm font-bold py-3 rounded-2xl glow-coffee"
+       style="background: linear-gradient(135deg, var(--coffee-dark), var(--coffee));">
+      <i data-lucide="send" class="w-4 h-4"></i>
+      Написать @feoln
+    </button>
+    <button onclick="openTg('https://t.me/feolnn')"
+       class="spring glow-hover flex-1 flex items-center justify-center gap-1.5 text-[#eee7e0] text-sm font-semibold py-3 rounded-2xl card">
+      <i data-lucide="star" class="w-4 h-4 text-amber-400 fill-amber-400"></i>
+      Отзывы
+    </button>
+  </div>
+</header>
+
+<!-- TABS -->
+<nav class="sticky top-0 z-30 bg-[#0d0b0a]/90 backdrop-blur border-b border-white/5 px-5">
+  <div class="relative flex gap-6 text-sm font-medium text-[#6b6058]" id="tabbar">
+    <button data-tab="portfolio" class="tab-btn py-3 relative text-white">Портфолио</button>
+    <button data-tab="prices" class="tab-btn py-3 relative">Услуги</button>
+    <button data-tab="etiquette" class="tab-btn py-3 relative">Как писать</button>
+    <button data-tab="contacts" class="tab-btn py-3 relative">Контакты</button>
+  </div>
+  <div class="tab-underline" id="tab-underline" style="width:0px; transform: translateX(0px);"></div>
+</nav>
+
+<main class="px-5 pt-5">
+
+  <!-- PORTFOLIO -->
+  <section id="tab-portfolio" class="tab-panel space-y-4">
+    <div class="anim-in">
+      <h2 class="font-display text-lg font-bold mb-1 text-white">Примеры работ</h2>
+      <p class="text-sm text-[#9a8b7d] mb-4">Готовые Mini App и боты — в отдельном канале с демо и разборами.</p>
+    </div>
+
+    <button onclick="openTg('https://t.me/feolnportfolio')"
+      class="anim-in spring glow-hover card w-full text-left rounded-3xl p-5 glow-coffee">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="icon-tile" style="background: rgba(166,124,82,0.14); border:1px solid rgba(166,124,82,0.35);">
+            <i data-lucide="layout-grid" class="w-6 h-6" style="color:var(--coffee);"></i>
+          </div>
+          <div>
+            <p class="font-semibold text-white">Канал с портфолио</p>
+            <p class="text-xs text-[#9a8b7d]">@feolnportfolio · кейсы и демо</p>
+          </div>
+        </div>
+        <i data-lucide="chevron-right" class="w-5 h-5 text-[#4d453e]"></i>
+      </div>
+    </button>
+
+    <div class="anim-in grid grid-cols-2 gap-3">
+      <div class="card rounded-2xl p-4">
+        <i data-lucide="bot" class="w-5 h-5 mb-2" style="color:var(--coffee);"></i>
+        <p class="text-sm font-semibold text-white">Telegram-боты</p>
+        <p class="text-xs text-[#9a8b7d]">Логика, платежи, интеграции</p>
+      </div>
+      <div class="card rounded-2xl p-4">
+        <i data-lucide="smartphone" class="w-5 h-5 mb-2" style="color:var(--coffee);"></i>
+        <p class="text-sm font-semibold text-white">Mini App</p>
+        <p class="text-xs text-[#9a8b7d]">Каталоги, визитки, сервисы</p>
+      </div>
+      <div class="card rounded-2xl p-4">
+        <i data-lucide="palette" class="w-5 h-5 mb-2" style="color:var(--coffee);"></i>
+        <p class="text-sm font-semibold text-white">Дизайн</p>
+        <p class="text-xs text-[#9a8b7d]">UI под задачу, не шаблон</p>
+      </div>
+      <div class="card rounded-2xl p-4">
+        <i data-lucide="zap" class="w-5 h-5 mb-2" style="color:var(--coffee);"></i>
+        <p class="text-sm font-semibold text-white">Быстро</p>
+        <p class="text-xs text-[#9a8b7d]">~1/3 дня на запуск</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICES -->
+  <section id="tab-prices" class="tab-panel space-y-3 hidden">
+    <div class="anim-in mb-1">
+      <h2 class="font-display text-lg font-bold mb-1 text-white">Услуги и цены</h2>
+      <p class="text-sm text-[#9a8b7d] mb-3">Срок разработки — около 1/3 дня. Стоимость от 10 до 25 USDT.</p>
+    </div>
+
+    <div id="prices-list" class="space-y-3"></div>
+  </section>
+
+  <!-- ETIQUETTE: "Противник мета-вопросов" -->
+  <section id="tab-etiquette" class="tab-panel space-y-4 hidden">
+    <div class="anim-in mb-1">
+      <h2 class="font-display text-lg font-bold mb-1 text-white">Как писать по делу 🚫</h2>
+      <p class="text-sm text-[#9a8b7d] mb-3">Не задавай мета-вопросы — сразу переходи к сути. Так я отвечаю быстрее.</p>
+    </div>
+
+    <div class="anim-in flex gap-2">
+      <button id="etq-btn-bad" onclick="setEtq('bad')" class="etq-toggle-btn active-bad">❌ Как не надо</button>
+      <button id="etq-btn-good" onclick="setEtq('good')" class="etq-toggle-btn inactive">✅ Как надо</button>
+    </div>
+
+    <div id="etq-content" class="anim-in"></div>
+  </section>
+
+  <!-- CONTACTS -->
+  <section id="tab-contacts" class="tab-panel space-y-3 hidden">
+    <div class="anim-in mb-1">
+      <h2 class="font-display text-lg font-bold mb-1 text-white">Сообщество</h2>
+      <p class="text-sm text-[#9a8b7d] mb-3">Канал с новостями и чат для вопросов</p>
+    </div>
+
+    <!-- Channel -->
+    <button onclick="openTg('https://t.me/feolnchannel')"
+      class="anim-in spring glow-hover w-full text-left rounded-3xl p-5 card">
+      <div class="flex items-center gap-3">
+        <div class="icon-tile" style="background: rgba(166,124,82,0.16); border:1px solid rgba(166,124,82,0.4);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a67f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 11l18-8-8 18-2-8-8-2z"/>
+            <path d="M13 13l6 6"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="font-semibold text-white">Наш Telegram-канал</p>
+          <p class="text-xs text-[#9a8b7d]">@feolnchannel · новости и апдейты</p>
+        </div>
+        <i data-lucide="chevron-right" class="w-5 h-5 text-[#4d453e]"></i>
+      </div>
+    </button>
+
+    <!-- Chat -->
+    <button onclick="openTg('https://t.me/feolnchat')"
+      class="anim-in spring glow-hover w-full text-left rounded-3xl p-5 card">
+      <div class="flex items-center gap-3">
+        <div class="icon-tile" style="background: rgba(166,124,82,0.16); border:1px solid rgba(166,124,82,0.4);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a67f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="font-semibold text-white">Чат комьюнити</p>
+          <p class="text-xs text-[#9a8b7d]">@feolnchat · вопросы и общение</p>
+        </div>
+        <i data-lucide="chevron-right" class="w-5 h-5 text-[#4d453e]"></i>
+      </div>
+    </button>
+
+    <!-- Direct message -->
+    <button onclick="openTg('https://t.me/feoln')"
+      class="anim-in spring glow-hover w-full text-left rounded-3xl p-5 glow-coffee"
+      style="background: linear-gradient(135deg, var(--coffee-dark), var(--coffee));">
+      <div class="flex items-center gap-3">
+        <div class="icon-tile bg-white/15">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 2 11 13"/>
+            <path d="M22 2 15 22l-4-9-9-4 20-7z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="font-semibold text-white">Написать напрямую</p>
+          <p class="text-xs text-white/75">@feoln · обсудим задачу</p>
+        </div>
+        <i data-lucide="chevron-right" class="w-5 h-5 text-white/60"></i>
+      </div>
+    </button>
+  </section>
+</main>
+
+<!-- TOAST -->
+<div id="toast" class="fixed left-1/2 top-6 z-[60] hidden px-5 py-3 text-white text-sm font-bold rounded-2xl shadow-2xl glow-coffee card"></div>
+
+<!-- BOTTOM NAV -->
+<div class="fixed bottom-0 left-0 right-0 bg-[#0d0b0a]/95 backdrop-blur border-t border-white/5 px-5 py-3 flex gap-3 z-30">
+  <button onclick="switchTab('prices')" class="spring flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl card text-white text-sm font-semibold">
+    <i data-lucide="tag" class="w-4 h-4"></i> Услуги
+  </button>
+  <button onclick="openTg('https://t.me/feoln')" class="spring glow-hover flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-white text-sm font-bold glow-coffee"
+    style="background: linear-gradient(135deg, var(--coffee-dark), var(--coffee));">
+    <i data-lucide="send" class="w-4 h-4"></i> Заказать
+  </button>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    try { tg.setHeaderColor('#0d0b0a'); tg.setBackgroundColor('#0d0b0a'); } catch(e) {}
+  }
+
+  // Чистые, прямые ссылки — без query-параметров, чтобы Telegram
+  // не показывал предупреждение с закодированным текстом.
+  function openTg(url){
+    if (tg && tg.openTelegramLink) { tg.openTelegramLink(url); }
+    else { window.open(url, '_blank'); }
+  }
+
+  // ---------- TABS ----------
+  const tabs = ['portfolio','prices','etiquette','contacts'];
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const underline = document.getElementById('tab-underline');
+
+  function switchTab(name){
+    tabs.forEach(t => {
+      const el = document.getElementById('tab-'+t);
+      if (t === name){
+        el.classList.remove('hidden');
+        el.classList.remove('fade-content');
+        void el.offsetWidth;
+        el.classList.add('fade-content');
+      } else {
+        el.classList.add('hidden');
+      }
+    });
+    tabBtns.forEach(btn => {
+      const active = btn.dataset.tab === name;
+      btn.classList.toggle('text-white', active);
+      btn.classList.toggle('text-[#6b6058]', !active);
+    });
+    const activeBtn = [...tabBtns].find(b => b.dataset.tab === name);
+    if (activeBtn) {
+      underline.style.width = activeBtn.offsetWidth + 'px';
+      underline.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+    }
+  }
+  tabBtns.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+  window.addEventListener('load', () => { switchTab('portfolio'); setEtq('bad'); });
+
+  // ---------- PRICES ----------
+  const services = [
+    {
+      icon: 'smartphone',
+      title: 'Разработка Mini App',
+      price: 20,
+      desc: 'Портфолио, каталог, визитка или сервис внутри Telegram.',
+      includes: ['Дизайн под задачу', 'Адаптация под тему Telegram', 'Публикация и настройка бота-хоста']
+    },
+    {
+      icon: 'palette',
+      title: 'Дизайн визитки',
+      price: 10,
+      desc: 'Компактная визитка-страница с контактами и услугами.',
+      includes: ['Уникальный визуальный стиль', 'Адаптив под любой экран', 'Ссылки на соцсети и мессенджеры']
+    },
+    {
+      icon: 'bot',
+      title: 'Разработка Telegram-бота',
+      price: 25,
+      desc: 'Бот под вашу логику: заявки, рассылки, интеграции.',
+      includes: ['Логика под ваш сценарий', 'Подключение к API/базе', 'Инструкция по управлению']
+    },
+  ];
+
+  const pricesList = document.getElementById('prices-list');
+  services.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'anim-in card rounded-3xl p-5';
+    el.style.animationDelay = (i*0.06)+'s';
+    el.innerHTML = `
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style="background: rgba(166,124,82,0.14); border:1px solid rgba(166,124,82,0.35);">
+            <i data-lucide="${s.icon}" class="w-5 h-5" style="color:var(--coffee);"></i>
+          </div>
+          <div>
+            <p class="font-semibold text-white">${s.title}</p>
+            <p class="text-xs text-[#9a8b7d] flex items-center gap-1 mt-0.5">
+              <i data-lucide="clock" class="w-3 h-3"></i> ~1/3 дня
+            </p>
+          </div>
+        </div>
+        <div class="price-badge px-3 py-1.5 rounded-xl text-sm font-bold shrink-0" style="color:#d9b98c;">${s.price} USDT</div>
+      </div>
+      <p class="text-sm text-[#9a8b7d] mb-3">${s.desc}</p>
+      <ul class="space-y-1.5 mb-4">
+        ${s.includes.map(inc => `
+          <li class="flex items-start gap-2 text-xs text-[#b3a599]">
+            <i data-lucide="check" class="w-3.5 h-3.5 mt-0.5 shrink-0" style="color:var(--coffee);"></i>
+            <span>${inc}</span>
+          </li>`).join('')}
+      </ul>
+      <button onclick="orderService('${s.title.replace(/'/g,"")}')"
+        class="spring w-full py-2.5 rounded-xl text-white text-sm font-semibold"
+        style="background: var(--coffee-badge); border:1px solid var(--card-border);">
+        Заказать
+      </button>
+    `;
+    pricesList.appendChild(el);
+  });
+
+  function orderService(title){
+    showToast('Открываем чат — напишите: «' + title + '»');
+    openTg('https://t.me/feoln');
+  }
+
+  // ---------- ETIQUETTE BLOCK ----------
+  const badChat = [
+    { text: 'феолн', time: '17:19' },
+    { text: 'Привет', time: '17:19' },
+    { text: 'можешь мне помочь?', time: '17:20' },
+    { text: 'пожалуйста', time: '17:20' },
+    { text: 'аууу', time: '17:20' },
+    { text: 'так можешь?', time: '17:20' },
+  ];
+  const goodChat = [
+    { text: 'Привет! Нужна помощь с ботом. Задача: сделать Web App визитку с портфолио. Сроки — до пятницы, бюджет — $200. Удобно обсудить?', time: '17:19' },
+  ];
+
+  function renderEtq(mode){
+    const isBad = mode === 'bad';
+    const chat = isBad ? badChat : goodChat;
+    const bubbleClass = isBad ? 'bubble-bad' : 'bubble-good';
+    const captionColor = isBad ? 'var(--bad)' : 'var(--good)';
+    const caption = isBad
+      ? 'Не задавай мета-вопросы и не жди ответа на «Привет». Экономь своё и моё время!'
+      : 'Пиши сразу суть задачи, бюджет и параметры. На такие сообщения я отвечаю мгновенно!';
+    const label = isBad ? '❌ Так не надо' : '✅ Так надо';
+
+    const bubblesHTML = chat.map(m => `
+      <div class="bubble-row">
+        <div class="bubble ${bubbleClass}">
+          <div>${m.text}</div>
+          <div class="bubble-time">${m.time}</div>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('etq-content').innerHTML = `
+      <div class="card rounded-3xl p-4">
+        <p class="text-xs font-bold mb-3" style="color:${captionColor};">${label}</p>
+        <div class="rounded-2xl p-3" style="background:#100d0b;">
+          ${bubblesHTML}
+        </div>
+        <p class="text-sm text-[#b3a599] mt-4 leading-snug">${caption}</p>
+      </div>
+    `;
+  }
+
+  function setEtq(mode){
+    const badBtn = document.getElementById('etq-btn-bad');
+    const goodBtn = document.getElementById('etq-btn-good');
+    if (mode === 'bad'){
+      badBtn.className = 'etq-toggle-btn active-bad';
+      goodBtn.className = 'etq-toggle-btn inactive';
+    } else {
+      goodBtn.className = 'etq-toggle-btn active-good';
+      badBtn.className = 'etq-toggle-btn inactive';
+    }
+    const content = document.getElementById('etq-content');
+    content.classList.remove('fade-content');
+    void content.offsetWidth;
+    content.classList.add('fade-content');
+    renderEtq(mode);
+  }
+
+  function showToast(msg){
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.remove('hidden');
+    toast.classList.remove('toast-anim');
+    void toast.offsetWidth;
+    toast.classList.add('toast-anim');
+    setTimeout(() => toast.classList.add('hidden'), 2000);
+  }
+
+  lucide.createIcons();
+</script>
+</body>
+</html>
